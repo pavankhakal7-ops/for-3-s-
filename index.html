@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Single Society Truth or Dare</title>
+<style>
+    /* Background */
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: url('https://storage.googleapis.com/gweb-uniblog-publish-prod/original_images/tenor_1.gif') no-repeat center center fixed;
+        background-size: cover;
+        color: white;
+    }
+
+    /* Overlay for readability */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 0;
+    }
+
+    h1 {
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 8px #000;
+        z-index: 1;
+        position: relative;
+    }
+
+    button {
+        padding: 12px 24px;
+        margin: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 10px;
+        background-color: rgba(255,255,255,0.2);
+        color: white;
+        text-shadow: 1px 1px 2px #000;
+        transition: all 0.3s ease;
+        z-index: 1;
+        position: relative;
+    }
+
+    button:hover {
+        transform: scale(1.1) rotate(-2deg);
+        background-color: rgba(255,255,255,0.4);
+    }
+
+    #friend, #result, #scoreboard {
+        margin-top: 20px;
+        font-size: 22px;
+        font-weight: bold;
+        min-height: 30px;
+        text-align: center;
+        z-index: 1;
+        position: relative;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+    }
+
+    #choices {
+        margin-top: 20px;
+        display: flex;
+        gap: 20px;
+        z-index: 1;
+        position: relative;
+    }
+
+    .animate-select {
+        animation: flash 1s linear infinite;
+    }
+
+    @keyframes flash {
+        0% { color: #ff0000; }
+        50% { color: #00ff00; }
+        100% { color: #ff0000; }
+    }
+
+    /* Confetti container */
+    .confetti {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 9999;
+    }
+
+    .confetti-piece {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background-color: #f1c40f;
+        opacity: 0.7;
+        animation: confetti-fall 3s linear forwards;
+    }
+
+    @keyframes confetti-fall {
+        0% { transform: translateY(0) rotate(0deg); }
+        100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+
+</style>
+</head>
+<body>
+
+<h1>Single Society Truth or Dare</h1>
+<button id="nextTurnBtn">Next Turn</button>
+<div id="friend"></div>
+
+<div id="choices">
+    <button id="truthBtn">Truth</button>
+    <button id="dareBtn">Dare</button>
+</div>
+
+<div id="result"></div>
+<div id="scoreboard"></div>
+
+<div class="confetti" id="confetti-container"></div>
+
+<script>
+// --- Game Data ---
+const friends = ["Avni", "Jiya", "Pavan"];
+let remainingFriends = [...friends];
+
+let truths = [
+    "What’s your secret talent?", "Who do you like?", "Most embarrassing moment?",
+    "What’s your biggest fear?", "What’s your weirdest habit?", "Who is your crush?",
+    "Have you ever lied to your best friend?", "What’s your guilty pleasure?",
+    "Have you ever cheated in a game?", "What’s the most childish thing you still do?",
+    "Have you ever stolen something?", "What’s your dream job?", "Have you ever cried in public?",
+    "What’s your favorite childhood memory?", "What’s the worst lie you’ve told?",
+    "Have you ever broken the rules?", "What is your secret obsession?",
+    "What is one thing you’d change about yourself?", "Who do you text the most?",
+    "What is the most awkward thing you’ve done for attention?"
+];
+
+let dares = [
+    "Do 10 push-ups", "Sing a song", "Dance for 30 seconds",
+    "Act like a monkey for 1 minute", "Do 5 jumping jacks", "Say the alphabet backwards",
+    "Do a silly walk across the room", "Imitate a friend", "Do 20 squats",
+    "Talk in a funny accent for 1 minute", "Post a funny status", "Draw a mustache on your face",
+    "Do a plank for 30 seconds", "Make a funny face and hold it for 10 seconds",
+    "Tell a joke", "Wear socks on your hands for 5 minutes", "Pretend to be a cat for 1 minute",
+    "Do a funny dance move", "Balance on one leg for 30 seconds", "Make up a short rap on the spot"
+];
+
+let scores = {
+    "Avni": {truth:0, dare:0},
+    "Jiya": {truth:0, dare:0},
+    "Pavan": {truth:0, dare:0}
+};
+
+// --- DOM Elements ---
+const nextTurnBtn = document.getElementById('nextTurnBtn');
+const friendDiv = document.getElementById('friend');
+const choicesDiv = document.getElementById('choices');
+const truthBtn = document.getElementById('truthBtn');
+const dareBtn = document.getElementById('dareBtn');
+const resultDiv = document.getElementById('result');
+const scoreboardDiv = document.getElementById('scoreboard');
+const confettiContainer = document.getElementById('confetti-container');
+
+choicesDiv.style.display = "none";
+
+// --- Functions ---
+function resetFriendsIfNeeded() {
+    if(remainingFriends.length === 0){
+        remainingFriends = [...friends];
+    }
+}
+
+function showConfetti(){
+    for(let i=0;i<50;i++){
+        const piece = document.createElement('div');
+        piece.classList.add('confetti-piece');
+        piece.style.left = Math.random()*window.innerWidth+'px';
+        piece.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+        piece.style.animationDuration = 2 + Math.random()*2 + 's';
+        confettiContainer.appendChild(piece);
+        setTimeout(()=>piece.remove(),3000);
+    }
+}
+
+function updateScoreboard(){
+    let html = "Scores:<br>";
+    for(let f of friends){
+        html += `${f} - Truth: ${scores[f].truth}, Dare: ${scores[f].dare}<br>`;
+    }
+    scoreboardDiv.innerHTML = html;
+}
+
+// --- Game Logic ---
+let selectedFriend = "";
+
+nextTurnBtn.addEventListener('click', () => {
+    resetFriendsIfNeeded();
+    friendDiv.classList.add("animate-select");
+    resultDiv.style.opacity = 0;
+    choicesDiv.style.display = "none";
+
+    let count = 0;
+    const interval = setInterval(() => {
+        const randomFriend = remainingFriends[Math.floor(Math.random() * remainingFriends.length)];
+        friendDiv.textContent = randomFriend;
+        count++;
+        if(count>10){
+            clearInterval(interval);
+            selectedFriend = randomFriend;
+            friendDiv.textContent = `${selectedFriend}'s turn! Choose Truth or Dare`;
+            friendDiv.classList.remove("animate-select");
+            choicesDiv.style.display = "flex";
+            friendDiv.style.opacity = 1;
+
+            remainingFriends = remainingFriends.filter(f => f!==selectedFriend);
+        }
+    },100);
+});
+
+truthBtn.addEventListener('click', ()=>{
+    if(truths.length===0){
+        resultDiv.textContent = "No more truths left!";
+        resultDiv.style.opacity = 1;
+        return;
+    }
+    const index = Math.floor(Math.random()*truths.length);
+    const selected = truths[index];
+    resultDiv.textContent = `Truth: ${selected}`;
+    resultDiv.style.opacity = 1;
+    truths.splice(index,1);
+    scores[selectedFriend].truth++;
+    updateScoreboard();
+});
+
+dareBtn.addEventListener('click', ()=>{
+    if(dares.length===0){
+        resultDiv.textContent = "No more dares left!";
+        resultDiv.style.opacity = 1;
+        return;
+    }
+    const index = Math.floor(Math.random()*dares.length);
+    const selected = dares[index];
+    resultDiv.textContent = `Dare: ${selected}`;
+    resultDiv.style.opacity = 1;
+    dares.splice(index,1);
+    scores[selectedFriend].dare++;
+    updateScoreboard();
+    showConfetti();
+});
+
+// Initialize scoreboard
+updateScoreboard();
+
+</script>
+</body>
+</html>
